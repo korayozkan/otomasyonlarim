@@ -1,52 +1,40 @@
-@echo off
-chcp 65001 > nul
-title En Hızlı DNS Otomatik Ayarlayıcı
+#  Günlük Otomasyonlarım
 
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [!] HATA: DNS değiştirebilmek için bu dosyaya SAĞ TIKLAYIP "Yönetici Olarak Çalıştır" demelisiniz!
-    echo.
-    pause
-    exit /b
-)
+Kendi dijital iş akışlarımı ve bilgisayar kullanımımı kolaylaştırmak için geliştirdiğim, tamamen saf Windows Batch (`.bat`) ile çalışan mikro otomasyon koleksiyonu.
 
-echo.
-echo ============================================================
-echo   EN HIZLI DNS SUNUCUSU TESPİT EDİLİYOR VE AYARLANIYOR...
-echo ============================================================
-echo.
+---
 
-:: PowerShell ile ping testleri yapıp en düşüğünü seçme ve uygulama
-powershell -Command ^
-    "$dnsList = @(" ^
-    "   @{ Name='Cloudflare'; Primary='1.1.1.1'; Secondary='1.0.0.1' }," ^
-    "   @{ Name='Google';     Primary='8.8.8.8'; Secondary='8.8.4.4' }," ^
-    "   @{ Name='Quad9';      Primary='9.9.9.9'; Secondary='149.112.112.112' }," ^
-    "   @{ Name='OpenDNS';    Primary='208.67.222.222'; Secondary='208.67.220.220' }," ^
-    "   @{ Name='AdGuard';    Primary='94.140.14.14'; Secondary='94.140.15.15' }" ^
-    ");" ^
-    "$bestDns = $null; $bestPing = 9999;" ^
-    "foreach ($d in $dnsList) { " ^
-    "   $ping = (Test-Connection -ComputerName $d.Primary -Count 2 -ErrorAction SilentlyContinue | Measure-Object -Property ResponseTime -Average).Average;" ^
-    "   if ($ping -and $ping -lt $bestPing) { " ^
-    "       $bestPing = [math]::Round($ping, 1); $bestDns = $d; " ^
-    "   }" ^
-    "   if ($ping) { Write-Host "   $($d.Name) Ping: $ping ms" -ForegroundColor Gray } " ^
-    "   else { Write-Host "   $($d.Name) Erişilemedi" -ForegroundColor Red }" ^
-    "}; " ^
-    "if ($bestDns) { " ^
-    "   Write-Host "`n✔ En Hızlı DNS Bulundu: $($bestDns.Name) ($bestPing ms)" -ForegroundColor Green; " ^
-    "   $adapter = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and $_.HardwareInterface -eq $true } | Select-Object -First 1;" ^
-    "   if ($adapter) { " ^
-    "       Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses ($bestDns.Primary, $bestDns.Secondary);" ^
-    "       Write-Host "✔ DNS başarıyla $($adapter.Name) bağdaştırıcısına uygulandı!" -ForegroundColor Yellow;" ^
-    "   } else { Write-Host '   Aktif ağ bağdaştırıcısı bulunamadı.' -ForegroundColor Red }" ^
-    "} else { Write-Host '   Hiçbir DNS sunucusuna ulaşılamadı.' -ForegroundColor Red }"
+###  Neden Böyle Bir Şey Yaptım?
 
-echo.
-echo ============================================================
-echo   İŞLEM TAMAMLANDI!
-echo ============================================================
-echo.
-timeout /t 5
-exit
+Piyasada bu işleri yapan yüzlerce uygulama var. Ancak çoğu:
+* Arka planda gereksiz kaynak harcayan karmaşık yapıda,
+* Ücretli veya abonelik sistemi gerektiriyor,
+* Hiç kullanmayacağım yüzlerce gereksiz özellikle dolu.
+
+Bunun yerine yapay zekayı bir asistan olarak kullanıp, kendi ihtiyacıma özel (terzi usulü) çözümler üretmeyi tercih ettim. 5-10 dakikalık bir geliştirme ile tam olarak istediğim şeyi yapan, reklamsız, şişkinliksiz ve hafif scriptler ortaya çıktı.
+
+---
+
+###  İçerikteki Otomasyonlar
+
+* **Sistem Temizleyici (`temizlik.bat`):** Temp, Prefetch, Log ve Geri Dönüşüm Kutusu gibi sistemde biriken gereksiz dosyaları güvenle siler.
+* **Masaüstü Düzenleyici (`MasaustuDuzenle.bat`):** Masaüstündeki karmaşayı önlemek için dosyaları uzantılarına göre (Görseller, Belgeler, Arşivler vb.) otomatik klasörler.
+ * **Eski Dosya Arşivleyici (`EskiDosyalarıArsivle.bat`):** 30 günden eski dosyaları tespit ederek tarih damgalı bir arşiv klasörüne taşır.
+
+
+---
+
+###  Nasıl Kullanılır?
+
+#### Manuel Kullanım
+1. Projeyi **ZIP** olarak indirin ve bir klasöre çıkarın.
+2. Çalıştırmak istediğiniz `.bat` dosyasına çift tıklayın. (Bazı sistem temizlik betikleri için sağ tıklayıp *Yönetici olarak çalıştır* demeniz gerekebilir.)
+
+#### Otomatik Kullanım (Görev Zamanlayıcısı)
+Her defasında elle çalıştırmakla uğraşmamak için bu betikleri Windows üzerinde otomatiğe bağlayabilirsiniz:
+
+1. `Win + R` tuşlarına basın, açılan pencereye `taskschd.msc` yazıp **Enter**'a basarak **Görev Zamanlayıcısı**'nı açın.
+2. Sağ taraftaki menüden **Temel Görev Oluştur...** seçeneğine tıklayın.
+3. Göreve bir isim verin ve çalıştırmak istediğiniz zaman aralığını seçin *(Örn: Her Pazar saat 12:00)*.
+4. Eylem olarak **Program Başlat** seçeneğini işaretleyin ve çalıştırmak istediğiniz `.bat` dosyasını seçip kaydedin.
+5. *(İsteğe bağlı)* Görevin sorunsuz çalışması için son ekranda *"En yüksek ayrıcalıklarla çalıştır"* seçeneğini işaretlemeyi unutmayın.
